@@ -2,14 +2,13 @@ version: "3.9"
 services:
   bot:
     build: .
-    command: python -m bot.main
     env_file: .env
-    depends_on: [db, redis]
+    ports:
+      - "80:8000"
   scheduler:
     build: .
-    command: celery -A scheduler.tasks worker -B -l info
     env_file: .env
-    depends_on: [db, redis]
+    command: celery -A scheduler.tasks worker -B -l info
   db:
     image: postgres:15-alpine
     restart: unless-stopped
@@ -17,9 +16,10 @@ services:
       POSTGRES_USER: ai
       POSTGRES_PASSWORD: ai
       POSTGRES_DB: ai
-    volumes: ["pgdata:/var/lib/postgresql/data"]
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-volumes:
-  pgdata:
+  watchtower:
+    image: containrrr/watchtower
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command: --interval 30
