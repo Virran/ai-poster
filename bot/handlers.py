@@ -36,13 +36,18 @@ async def cmd_start(message: Message):
 
 # ---------- Купить ----------
 def create_payment(amount: int, description: str, tg_id: int):
-    return Payment.create({
+    payment = Payment.create({
         "amount": {"value": f"{amount}.00", "currency": "RUB"},
-        "confirmation": {"type": "redirect", "return_url": "https://t.me/ii_poster_bot"},
+        "confirmation": {
+            "type": "redirect",
+            "return_url": "https://t.me/YOUR_BOT"
+        },
         "capture": True,
         "description": description,
         "metadata": {"tg_id": str(tg_id)}
-    }, uuid.uuid4())
+    })
+    # возвращаем именно id и url
+    return payment.id, payment.confirmation.confirmation_url
 
 # ---------- Проверка ----------
 @router.callback_query(F.data.startswith("check_"))
