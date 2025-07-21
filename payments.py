@@ -7,7 +7,7 @@ Configuration.secret_key = os.getenv("YOOKASSA_SECRET_KEY")
 def create_payment(amount: int, description: str):
     payment = Payment.create({
         "amount": {"value": f"{amount}.00", "currency": Currency.RUB},
-        "confirmation": {"type": "redirect", "return_url": "https://t.me/YOUR_BOT"},
+        "confirmation": {"type": "redirect", "return_url": "https://t.me/ii_poster_bot"},
         "capture": True,
         "description": description,
     }, uuid.uuid4())
