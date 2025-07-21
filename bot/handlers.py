@@ -8,6 +8,7 @@ from models import User, Post
 from payments import create_payment
 from openai_client import generate_post, generate_image
 from vk import VKPoster
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
