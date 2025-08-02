@@ -20,39 +20,50 @@ router = Router()
 @router.message(F.text == "/start")
 async def cmd_start(message: Message):
     text = (
-        "👋 Привет! Я AI-автопостер.\n"
+        "👋 Привет! Я AI-автопостер.\n\n"
         "Я буду:\n"
         "• анализировать вашу группу ВК,\n"
         "• генерировать посты,\n"
-        "• публиковать их по расписанию.\n"
+        "• публиковать их по расписанию.\n\n"
         "Нажмите кнопку ниже, чтобы купить подписку 👇"
     )
-    payment_url = create_payment(990, "Подписка AI-постер", message.from_user.id)
+    payment_id, url = create_payment(990, "Подписка AI-постер", message.from_user.id)
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Оплатить 990 ₽", url=payment_url)],
-        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data="check_payment")]
+        [InlineKeyboardButton(text="💳 Оплатить 990 ₽", url=url)],
+        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_{payment_id}")]
     ])
     await message.answer(text, reply_markup=kb)
 
-# ---------- Create Payment ----------
+# ---------- Купить ----------
 def create_payment(amount: int, description: str, tg_id: int):
     payment = Payment.create({
         "amount": {"value": f"{amount}.00", "currency": "RUB"},
         "confirmation": {
             "type": "redirect",
-            "return_url": f"https://t.me/ii_poster_bot?start=pay_{tg_id}"
+            "return_url": "https://t.me/ii_poster_bot AI Автопостер AI Автопостер  "
         },
         "capture": True,
         "description": description,
         "metadata": {"tg_id": str(tg_id)}
     })
-    return payment.confirmation.confirmation_url
+    # возвращаем именно id и url
+    return payment.id, payment.confirmation.confirmation_url
 
-# ---------- Check Payment ----------
-@router.callback_query(F.data == "check_payment")
+# ---------- Проверка ----------
+@router.callback_query(F.data.startswith("check_"))
 async def check_payment(callback: CallbackQuery):
-    await callback.answer("⏳ Платёж ещё не подтверждён. Попробуйте позже.")
-    await callback.message.edit_text("✅ Оплата прошла! Теперь пришлите ключ API вашего сообщества ВК:")
+    payment_id = callback.data.split("_", 1)[1]
+    payment = Payment.find_one(payment_id)
+
+    if payment.status == "succeeded":
+        await callback.message.edit_text(
+            "✅ Оплата прошла! Теперь пришлите ссылку на вашу VK-группу:"
+        )
+    else:
+        await callback.answer(
+            "⏳ Платёж ещё не подтверждён. Попробуйте позже.",
+            show_alert=True,
+        ) 
 
 @router.message(Form.waiting_access_token)
 async def receive_access_token(message: Message, state: FSMContext):
