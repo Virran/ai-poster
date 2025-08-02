@@ -1,4 +1,4 @@
-from aiogram import Bot, Dispatcher, F, types
+from aiogram import Router, Bot, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
