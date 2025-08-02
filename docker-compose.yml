@@ -1,37 +1,25 @@
-version: '3.8'
+version: "3.8"
 services:
   bot:
     build: .
-    command: python -m bot.main
-    environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID}
-      - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
-    depends_on:
-      - db
-      - redis
-
+    env_file: .env
+    ports:
+      - "80:8000"
   scheduler:
     build: .
+    env_file: .env
     command: celery -A scheduler.tasks worker -B -l info
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - db
-      - redis
-
   db:
-    image: postgres:latest
-    restart: always
+    image: postgres:15-alpine
+    restart: unless-stopped
     environment:
-      - POSTGRES_DB=ai
-      - POSTGRES_USER=ai
-      - POSTGRES_PASSWORD=ai
-    volumes:
-      - db-data: /var/lib/postgresql/data
-
+      POSTGRES_USER: ai
+      POSTGRES_PASSWORD: ai
+      POSTGRES_DB: ai
   redis:
-    image: redis:latest
-    restart: always
-    volumes:
-      - redis-data: /data
+    image: redis:7-alpine
+    restart: unless-stopped
+  watchtower:
+    image: containrrr/watchtower
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    command: --interval 30
