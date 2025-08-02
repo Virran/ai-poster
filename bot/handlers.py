@@ -51,24 +51,14 @@ def create_payment(amount: int, description: str, tg_id: int):
 
 # ---------- Проверка ----------
 @router.callback_query(F.data.startswith("check_"))
-async def check_payment(callback: CallbackQuery, state: FSMContext):
+async def check_payment(callback: CallbackQuery):
     payment_id = callback.data.split("_", 1)[1]
     payment = Payment.find_one(payment_id)
 
     if payment.status == "succeeded":
-        async with async_session() as s:
-            u = User(
-                tg_id=callback.from_user.id,
-                expires_at=datetime.utcnow() + timedelta(days=30),
-                is_active=True,
-            )
-            s.add(u)
-            await s.commit()
-
         await callback.message.edit_text(
-            "✅ Оплата прошла! Теперь пришлите ссылку на вашу группу ВК:"
+            "✅ Оплата прошла! Теперь пришлите ссылку на вашу VK-группу:"
         )
-        await state.set_state(Form.waiting_vk)
     else:
         await callback.answer(
             "⏳ Платёж ещё не подтверждён. Попробуйте позже.",
