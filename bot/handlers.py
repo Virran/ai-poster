@@ -1,10 +1,12 @@
-from aiogram import Bot, F, types
-from aiogram.dispatcher import Dispatcher
-from aiogram.fsm import FSMContext
+from aiogram import Bot, Dispatcher, F, types
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime, timedelta
 import uuid
 import os
+
+# Остальной код остаётся без изменений
 
 from bot.states import Form
 from db import async_session
