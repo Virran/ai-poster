@@ -1,7 +1,9 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.context import FSMContext
+from aiogram.dispatcher import Dispatcher
+from aiogram.dispatcher.fsm import FSMContext
 from datetime import datetime, timedelta
+import uuid
 import os
 
 from bot.states import Form
@@ -33,7 +35,6 @@ async def cmd_start(message: Message):
     ])
     await message.answer(text, reply_markup=kb)
 
-# Create Payment
 def create_payment(amount: int, description: str, tg_id: int):
     payment = Payment.create({
         "amount": {"value": f"{amount}.00", "currency": "RUB"},
