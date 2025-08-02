@@ -1,5 +1,5 @@
 # bot/states.py
-from aiogram.fsm.states import StatesGroup, State
+from aiogram.fsm.state import StatesGroup, State  # Верно для aiogram 3.x
 
 class Form(StatesGroup):
     waiting_vk = State()
