@@ -20,11 +20,11 @@ router = Router()
 @router.message(F.text == "/start")
 async def cmd_start(message: Message):
     text = (
-        "👋 Привет! Я AI-автопостер.\n\n"
+        "👋 Привет! Я AI-автопостер.\n"
         "Я буду:\n"
         "• анализировать вашу группу ВК,\n"
         "• генерировать посты,\n"
-        "• публиковать их по расписанию.\n\n"
+        "• публиковать их по расписанию.\n"
         "Нажмите кнопку ниже, чтобы купить подписку 👇"
     )
     payment_id, url = create_payment(990, "Подписка AI-постер", message.from_user.id)
@@ -34,22 +34,21 @@ async def cmd_start(message: Message):
     ])
     await message.answer(text, reply_markup=kb)
 
-# ---------- Купить ----------
+# ---------- Create Payment ----------
 def create_payment(amount: int, description: str, tg_id: int):
     payment = Payment.create({
         "amount": {"value": f"{amount}.00", "currency": "RUB"},
         "confirmation": {
             "type": "redirect",
-            "return_url": "https://t.me/YOUR_BOT"
+            "return_url": "https://t.me/ii_poster_bot"
         },
         "capture": True,
         "description": description,
         "metadata": {"tg_id": str(tg_id)}
     })
-    # возвращаем именно id и url
     return payment.id, payment.confirmation.confirmation_url
 
-# ---------- Проверка ----------
+# ---------- Check Payment ----------
 @router.callback_query(F.data.startswith("check_"))
 async def check_payment(callback: CallbackQuery):
     payment_id = callback.data.split("_", 1)[1]
@@ -57,10 +56,77 @@ async def check_payment(callback: CallbackQuery):
 
     if payment.status == "succeeded":
         await callback.message.edit_text(
-            "✅ Оплата прошла! Теперь пришлите ссылку на вашу VK-группу:"
+            "✅ Оплата прошла! Теперь пришлите ключ API вашего сообщества ВК:"
         )
     else:
         await callback.answer(
             "⏳ Платёж ещё не подтверждён. Попробуйте позже.",
             show_alert=True,
         )
+
+@router.message(Form.waiting_access_token)
+async def receive_access_token(message: Message, state: FSMContext):
+    access_token = message.text
+    await state.update_data(access_token=access_token)
+    await message.answer("Ключ доступа получен. Теперь пришлите ключ API вашего сообщества ВК:")
+
+@router.message(Form.waiting_vk)
+async def receive_vk(message: Message, state: FSMContext):
+    await state.update_data(vk_url=message.text)
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Деловой", callback_data="style_деловой")],
+            [InlineKeyboardButton(text="Экспертный", callback_data="style_экспертный")],
+            [InlineKeyboardButton(text="Дружелюбный", callback_data="style_дружелюбный")],
+        ]
+    )
+    await message.answer("Выберите стиль постов:", reply_markup=kb)
+    await state.set_state(Form.waiting_style)
+
+@router.callback_query(F.data.startswith("style_"))
+async def receive_style(callback: CallbackQuery, state: FSMContext):
+    style = callback.data.split("_", 1)[1]
+    await state.update_data(style=style)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="1 пост/день", callback_data="freq_1")],
+        [InlineKeyboardButton(text="2 поста/день", callback_data="freq_2")],
+        [InlineKeyboardButton(text="3 поста/день", callback_data="freq_3")],
+    ])
+    await callback.message.edit_text("Выберите количество постов в день:", reply_markup=kb)
+    await state.set_state(Form.waiting_freq)
+
+@router.callback_query(F.data.startswith("freq_"))
+async def receive_freq(callback: CallbackQuery, state: FSMContext):
+    freq = float(callback.data.split("_", 1)[1])
+    await state.update_data(posts_per_day=freq)
+    await state.set_state(Form.waiting_keywords)
+
+@router.message(Form.waiting_keywords)
+async def receive_keywords(message: Message, state: FSMContext):
+    keywords = message.text.split()
+    post_text = await generate_post(keywords)
+    group_id = state.data["vk_url"].split("/")[-2]  # Извлека "vk.com/-12345678" → 12345678
+    access_token = "vk1.a.cByhC3scVxdfbznjG1qJ_0xXfVJ8ckIMNqjxvzBNcHO3LVqnduPMDqGsWzT9oHgi_m2b7AEdI9JTmvfVOVJmatYqyApRGsECGjtta0iIfxEDwNpD3_dg8IAmyINlVxFwQgsDU2ozVv0wcNvCIZ76-4qiiOJgzHBy0daVSn-PhX8GSiDGbL7vQcCXVRa81PeAk2xs252zelQBALYBCWAtFw"
+    
+    post_result = post_to_vk(group_id, access_token, post_text)
+    if post_result.get("response"):
+        await message.answer("Пост опубликован.")
+    else:
+        await message.answer("Не удалось опубликовать пост.")
+    await state.finish()
+
+async def generate_post(keywords: list) -> str:
+    post_text = " ".join(keywords)
+    return post_text[:300]  # Убеди, что пост не превышествует 300 символов
+
+def post_to_vk(group_id: int, access_token: str, post_text: str):
+    url = f"https://api.vk.com/method/wall.post"
+    params = {
+        "access_token": "vk1.a.cByhC3scVxdfbznjG1qJ_0xXfVJ8ckIMNqjxvzBNcHO3LVqnduPMDqGsWzT9oHgi_m2b7AEdI9JTmvfVOVJmatYqyApRGsECGjtta0iIfxEDwNpD3_dg8IAmyINlVxFwQgsDU2ozVv0wcNvCIZ76-4qiiOJgzHBy0daVSn-PhX8GSiDGbL7vQcCXVRa81PeAk2xs252zelQBALYBCWAtFw",
+        "v": 5.101,
+        "owner_id": group_id,
+        "message": f"Тест бота {post_text} | {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} | {os.getenv('VK_USER_NAME')}"
+    }
+    response = requests.post(url, params=params)
+    return response.json()
