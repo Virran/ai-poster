@@ -1,8 +1,7 @@
-from aiogram import Router, F
-from aiogram import Bot, Dispatcher
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot, F, types
 from aiogram.dispatcher import Dispatcher
-from aiogram.dispatcher import FSMContext
+from aiogram.fsm import FSMContext
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime, timedelta
 import uuid
 import os
