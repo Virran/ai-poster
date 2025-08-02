@@ -2,7 +2,6 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta
-import uuid
 import os
 
 from bot.states import Form
@@ -16,15 +15,15 @@ Configuration.secret_key = os.getenv("YOOKASSA_SECRET_KEY")
 
 router = Router()
 
-# ---------- /start ----------
+# /start
 @router.message(F.text == "/start")
 async def cmd_start(message: Message):
     text = (
-        "👋 Привет! Я AI-автопостер.\n\n"
+        "👋 Привет! Я AI-автопостер.\n"
         "Я буду:\n"
         "• анализировать вашу группу ВК,\n"
         "• генерировать посты,\n"
-        "• публиковать их по расписанию.\n\n"
+        "• публиковать их по расписанию.\n"
         "Нажмите кнопку ниже, чтобы купить подписку 👇"
     )
     payment_id, url = create_payment(990, "Подписка AI-постер", message.from_user.id)
@@ -34,22 +33,21 @@ async def cmd_start(message: Message):
     ])
     await message.answer(text, reply_markup=kb)
 
-# ---------- Купить ----------
+# Create Payment
 def create_payment(amount: int, description: str, tg_id: int):
     payment = Payment.create({
         "amount": {"value": f"{amount}.00", "currency": "RUB"},
         "confirmation": {
             "type": "redirect",
-            "return_url": "https://t.me/ii_poster_bot AI Автопостер AI Автопостер  "
+            "return_url": f"https://t.me/ii_poster_bot?start=pay_{tg_id}"
         },
         "capture": True,
         "description": description,
         "metadata": {"tg_id": str(tg_id)}
     })
-    # возвращаем именно id и url
     return payment.id, payment.confirmation.confirmation_url
 
-# ---------- Проверка ----------
+# Check Payment
 @router.callback_query(F.data.startswith("check_"))
 async def check_payment(callback: CallbackQuery):
     payment_id = callback.data.split("_", 1)[1]
@@ -57,13 +55,13 @@ async def check_payment(callback: CallbackQuery):
 
     if payment.status == "succeeded":
         await callback.message.edit_text(
-            "✅ Оплата прошла! Теперь пришлите ссылку на вашу VK-группу:"
+            "✅ Оплата прошла! Теперь пришлите ключ API вашего сообщества ВК:"
         )
     else:
         await callback.answer(
-            "⏳ Платёж ещё не подтверждён. Попробуйте позже.",
+            "⏳ Платёж ещё не подтверждён. Попробуйте поже.",
             show_alert=True,
-        ) 
+        )
 
 @router.message(Form.waiting_access_token)
 async def receive_access_token(message: Message, state: FSMContext):
