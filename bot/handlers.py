@@ -27,10 +27,10 @@ async def cmd_start(message: Message):
         "• публиковать их по расписанию.\n"
         "Нажмите кнопку ниже, чтобы купить подписку 👇"
     )
-    payment_id, url = create_payment(990, "Подписка AI-постер", message.from_user.id)
+    payment_url = create_payment(990, "Подписка AI-постер", message.from_user.id)
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 Оплатить 990 ₽", url=url)],
-        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_{payment_id}")]
+        [InlineKeyboardButton(text="💳 Оплатить 990 ₽", url=payment_url)],
+        [InlineKeyboardButton(text="✅ Проверить оплату", callback_data="check_payment")]
     ])
     await message.answer(text, reply_markup=kb)
 
@@ -40,29 +40,19 @@ def create_payment(amount: int, description: str, tg_id: int):
         "amount": {"value": f"{amount}.00", "currency": "RUB"},
         "confirmation": {
             "type": "redirect",
-            "return_url": "https://t.me/ii_poster_bot"
+            "return_url": f"https://t.me/ii_poster_bot?start=pay_{tg_id}"
         },
         "capture": True,
         "description": description,
         "metadata": {"tg_id": str(tg_id)}
     })
-    return payment.id, payment.confirmation.confirmation_url
+    return payment.confirmation.confirmation_url
 
 # ---------- Check Payment ----------
-@router.callback_query(F.data.startswith("check_"))
+@router.callback_query(F.data == "check_payment")
 async def check_payment(callback: CallbackQuery):
-    payment_id = callback.data.split("_", 1)[1]
-    payment = Payment.find_one(payment_id)
-
-    if payment.status == "succeeded":
-        await callback.message.edit_text(
-            "✅ Оплата прошла! Теперь пришлите ключ API вашего сообщества ВК:"
-        )
-    else:
-        await callback.answer(
-            "⏳ Платёж ещё не подтверждён. Попробуйте позже.",
-            show_alert=True,
-        )
+    await callback.answer("⏳ Платёж ещё не подтверждён. Попробуйте позже.")
+    await callback.message.edit_text("✅ Оплата прошла! Теперь пришлите ключ API вашего сообщества ВК:")
 
 @router.message(Form.waiting_access_token)
 async def receive_access_token(message: Message, state: FSMContext):
@@ -107,7 +97,7 @@ async def receive_keywords(message: Message, state: FSMContext):
     keywords = message.text.split()
     post_text = await generate_post(keywords)
     group_id = state.data["vk_url"].split("/")[-2]  # Извлека "vk.com/-12345678" → 12345678
-    access_token = "vk1.a.cByhC3scVxdfbznjG1qJ_0xXfVJ8ckIMNqjxvzBNcHO3LVqnduPMDqGsWzT9oHgi_m2b7AEdI9JTmvfVOVJmatYqyApRGsECGjtta0iIfxEDwNpD3_dg8IAmyINlVxFwQgsDU2ozVv0wcNvCIZ76-4qiiOJgzHBy0daVSn-PhX8GSiDGbL7vQcCXVRa81PeAk2xs252zelQBALYBCWAtFw"
+    access_token = state.data["access_token"]
     
     post_result = post_to_vk(group_id, access_token, post_text)
     if post_result.get("response"):
@@ -121,9 +111,9 @@ async def generate_post(keywords: list) -> str:
     return post_text[:300]  # Убеди, что пост не превышествует 300 символов
 
 def post_to_vk(group_id: int, access_token: str, post_text: str):
-    url = f"https://api.vk.com/method/wall.post"
+    url = "https://api.vk.com/method/wall.post"
     params = {
-        "access_token": "vk1.a.cByhC3scVxdfbznjG1qJ_0xXfVJ8ckIMNqjxvzBNcHO3LVqnduPMDqGsWzT9oHgi_m2b7AEdI9JTmvfVOVJmatYqyApRGsECGjtta0iIfxEDwNpD3_dg8IAmyINlVxFwQgsDU2ozVv0wcNvCIZ76-4qiiOJgzHBy0daVSn-PhX8GSiDGbL7vQcCXVRa81PeAk2xs252zelQBALYBCWAtFw",
+        "access_token": access_token,
         "v": 5.101,
         "owner_id": group_id,
         "message": f"Тест бота {post_text} | {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} | {os.getenv('VK_USER_NAME')}"
